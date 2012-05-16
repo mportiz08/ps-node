@@ -4,6 +4,9 @@ io    = require 'socket.io'
 path  = require 'path'
 spawn = require('child_process').spawn
 
+Array.prototype.limit = (max) ->
+  this[0..max]
+
 class Process
   @nameForCommand: (command) ->
     pathComponents = command.split('/')
@@ -25,11 +28,15 @@ class Process
     proc.name    = Process.nameForCommand(proc.command)
     proc
 
-getProcessesInfo = (callback) ->
+getProcessesInfo = (numProcesses, callback) ->
   ps = spawn './ps-info'
+  procs = []
   ps.stdout.on 'data', (data) ->
-    psOut = data.toString().split("\n\n")[1..-2]
-    procs = (Process.parse(procStats.split("\n")) for procStats in psOut)
+    psOut = data.toString().split("\n\n")[1..-2].limit(numProcesses)
+    (procs.push Process.parse(procStats.split("\n")) for procStats in psOut)
+    #ps.kill()
+    #callback procs
+  ps.on 'exit', ->
     callback procs
 
 app = http.createServer (req, res) ->
@@ -52,7 +59,21 @@ app = http.createServer (req, res) ->
 
 app.listen 1337
 io = io.listen(app)
+io.enable 'browser client etag'
+io.set 'log level', 1
+io.set 'transports', [
+  'websocket',
+  'flashsocket',
+  'htmlfile',
+  'xhr-polling',
+  'jsonp-polling'
+]
+
+refresh = (socket) ->
+  getProcessesInfo 15, (processes) ->
+    socket.volatile.emit 'ps-info', processes
 
 io.sockets.on 'connection', (socket) ->
-  getProcessesInfo (processes) ->
-    socket.emit 'ps-info', processes
+  setInterval ->
+    refresh(socket)
+  , 1000

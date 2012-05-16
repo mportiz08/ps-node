@@ -34,8 +34,6 @@ getProcessesInfo = (numProcesses, callback) ->
   ps.stdout.on 'data', (data) ->
     psOut = data.toString().split("\n\n")[1..-2].limit(numProcesses)
     (procs.push Process.parse(procStats.split("\n")) for procStats in psOut)
-    #ps.kill()
-    #callback procs
   ps.on 'exit', ->
     callback procs
 

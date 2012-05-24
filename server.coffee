@@ -2,12 +2,18 @@ fs    = require 'fs'
 http  = require 'http'
 io    = require 'socket.io'
 path  = require 'path'
+url   = require 'url'
 spawn = require('child_process').spawn
 
 Array.prototype.limit = (max) ->
-  this[0..max]
+  if max == 'all'
+    this
+  else
+    this[0...max]
 
 class Process
+  @max: 15
+  
   @nameForCommand: (command) ->
     pathComponents = command.split('/')
     pathComponents[pathComponents.length - 1]
@@ -38,7 +44,17 @@ getProcessesInfo = (numProcesses, callback) ->
     callback procs
 
 app = http.createServer (req, res) ->
-  filePath = ".#{req.url}"
+  uri = url.parse(req.url, true)
+  console.log uri
+  console.log Process.max
+  
+  if uri.query.num?
+    if uri.query.num == 'all'
+      Process.max = uri.query.num
+    else
+      Process.max = parseInt(uri.query.num)
+  
+  filePath = ".#{uri.pathname}"
   filePath += 'index.html' if filePath == './'
   
   ext = path.extname(filePath)
@@ -68,7 +84,7 @@ io.set 'transports', [
 ]
 
 refresh = (socket) ->
-  getProcessesInfo 15, (processes) ->
+  getProcessesInfo Process.max, (processes) ->
     socket.volatile.emit 'ps-info', processes
 
 io.sockets.on 'connection', (socket) ->

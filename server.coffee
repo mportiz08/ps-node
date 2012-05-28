@@ -45,8 +45,6 @@ getProcessesInfo = (numProcesses, callback) ->
 
 app = http.createServer (req, res) ->
   uri = url.parse(req.url, true)
-  console.log uri
-  console.log Process.max
   
   if uri.query.num?
     if uri.query.num == 'all'
